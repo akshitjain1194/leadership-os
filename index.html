@@ -1175,12 +1175,78 @@ body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);m
 .db-link{font-size:11px;color:var(--accent);cursor:pointer;text-decoration:underline;}
 .db-link:hover{color:var(--accent-glow);}
 .db-bottom{text-align:center;font-family:'DM Mono',monospace;font-size:11px;color:var(--ink-faint);padding:4px 0;border-top:1px solid var(--border);flex-shrink:0;}
+
+/* ── Mobile hamburger (hidden on desktop) ── */
+.mob-hamburger{display:none;background:none;border:none;color:white;font-size:22px;line-height:1;cursor:pointer;padding:0;width:44px;height:44px;align-items:center;justify-content:center;flex-shrink:0;}
+.mob-overlay{display:none;position:fixed;top:50px;left:0;right:0;bottom:0;background:rgba(0,0,0,0.45);z-index:90;}
+.mob-overlay.mob-show{display:block;}
+
+@media (max-width: 768px) {
+  /* ── Topbar ── */
+  .mob-hamburger{display:flex;}
+  .topbar{padding:0 12px 0 4px;}
+  .topbar-right{display:none;}
+  .week-badge{display:none;}
+  .mode-btn{padding:5px 9px;font-size:11px;}
+
+  /* ── Shell: collapse to single content column ── */
+  .shell{grid-template-columns:1fr;}
+  #rp{display:none;}
+
+  /* ── Sidebar: off-canvas left drawer ── */
+  .sidebar{
+    position:fixed;top:50px;left:-270px;width:260px;
+    height:calc(100vh - 50px);z-index:100;
+    transition:left 0.22s ease;box-shadow:none;
+  }
+  .sidebar.mob-open{left:0;box-shadow:4px 0 24px rgba(0,0,0,0.18);}
+
+  /* ── Pages ── */
+  .page{padding:14px 14px 24px;}
+  .page.active{height:auto;min-height:calc(100vh - 50px);}
+  .ph h1{font-size:20px;}
+
+  /* ── Touch targets ── */
+  .ni{padding:11px 16px;min-height:44px;}
+  .cap-btn{min-height:44px;font-size:14px;}
+  .refl-save-btn{min-height:44px;font-size:14px;padding:10px 22px;}
+  .bp,.bs{min-height:40px;}
+  button{touch-action:manipulation;}
+
+  /* ── This Week: matrix stacks ── */
+  .matrix{grid-template-columns:1fr;}
+  .quadrant.full{grid-column:1;}
+  .tpt-strip{padding:12px;}
+  .tpt-title{font-size:14px;}
+
+  /* ── Capture: metrics 2×2, input stacks, ideas single col ── */
+  .cap-metrics{grid-template-columns:repeat(2,1fr);}
+  .cap-row{flex-direction:column;gap:8px;}
+  .cap-input,.cap-select,.cap-date,.cap-btn{width:100%;flex:none;}
+  .cap-input{font-size:15px;}
+  .idea-grid{grid-template-columns:1fr;}
+  .idea-grid .dr-expand{grid-column:1;}
+
+  /* ── Reflection Log ── */
+  .refl-feed-header{flex-direction:column;align-items:stretch;gap:8px;}
+  .refl-search{width:100%;box-sizing:border-box;}
+  .refl-textarea{font-size:15px;}
+
+  /* ── Weekly Focus ── */
+  .sp-wf-row{margin-left:0;padding-left:8px;}
+  .sp-wf-date-col{min-width:68px;}
+  .sp-wf-anchor-row{gap:6px;}
+  .sp-wf-anchor-pill{font-size:13px;padding:6px 14px;}
+  .sp-wf-toggle{flex-wrap:wrap;}
+  .sp-wf-tog-btn{font-size:12px;padding:6px 12px;}
+}
 </style>
 </head>
 <body>
 
 <div class="topbar">
   <div class="topbar-left">
+    <button class="mob-hamburger" id="mobHamburger" onclick="toggleMobSidebar()" aria-label="Menu">☰</button>
     <div class="logo">Leadership <span>OS</span></div>
     <div class="week-badge">WEEK 24 · JUN 2026</div>
   </div>
@@ -1195,6 +1261,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);m
   </div>
 </div>
 
+<div class="mob-overlay" id="mobOverlay" onclick="closeMobSidebar()"></div>
 <div class="shell">
   <aside class="sidebar" id="sidebar">
     <div class="sb-section">
@@ -2428,6 +2495,18 @@ function setMode(m){
   }
 }
 
+function toggleMobSidebar(){
+  const sidebar=document.getElementById('sidebar');
+  const overlay=document.getElementById('mobOverlay');
+  const open=sidebar.classList.contains('mob-open');
+  sidebar.classList.toggle('mob-open',!open);
+  overlay.classList.toggle('mob-show',!open);
+}
+function closeMobSidebar(){
+  document.getElementById('sidebar').classList.remove('mob-open');
+  document.getElementById('mobOverlay').classList.remove('mob-show');
+}
+
 function sp(pid,el){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   const t=document.getElementById('page-'+pid);
@@ -2436,6 +2515,7 @@ function sp(pid,el){
     document.querySelectorAll('.ni').forEach(n=>n.classList.remove('aw','as'));
     el.classList.add(mode==='work'?'aw':'as');
   }
+  closeMobSidebar();
 }
 
 function showTab(tid,btn){
