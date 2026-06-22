@@ -1649,6 +1649,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);m
         <div class="sp-wf-toggle">
           <button class="sp-wf-tog-btn on" id="spWfBtnUpcoming" onclick="spSetWeeklyToggle('upcoming')">📅 Due in 10 days</button>
           <button class="sp-wf-tog-btn" id="spWfBtnOverdue" onclick="spSetWeeklyToggle('overdue')">⚠️ Overdue</button>
+          <button class="sp-wf-tog-btn" id="spWfBtnAll" onclick="spSetWeeklyToggle('all')">📋 All weekly milestones</button>
         </div>
         <span class="sp-wf-count" id="spWfCount"></span>
       </div>
@@ -5284,9 +5285,10 @@ function spGetWfBreadcrumb(m){
 }
 function spSetWeeklyToggle(mode){
   spWeeklyToggle=mode;
-  const bu=document.getElementById('spWfBtnUpcoming'),bo=document.getElementById('spWfBtnOverdue');
+  const bu=document.getElementById('spWfBtnUpcoming'),bo=document.getElementById('spWfBtnOverdue'),ba=document.getElementById('spWfBtnAll');
   if(bu)bu.classList.toggle('on',mode==='upcoming');
   if(bo)bo.classList.toggle('on',mode==='overdue');
+  if(ba)ba.classList.toggle('on',mode==='all');
   renderSpWeeklyPage();
 }
 function spSetWfAnchorFilter(name){
@@ -5302,24 +5304,46 @@ function renderSpWeeklyPage(){
   const DAYS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const scMap={Active:'var(--accent)','At Risk':'var(--fire)',Done:'var(--ink-faint)',Paused:'var(--border)'};
-  // Build anchor pills from ALL non-done weekly milestones
-  const allWeeklies=spMilestones.filter(m=>m.horizon==='Weekly'&&m.status!=='Done');
-  // Deduplicate tolerantly — trim + case-insensitive so "Sabita Digal " and "Sabita Digal" collapse
+  // All weekly milestones (no status filter — toggle decides what to show)
+  const allWeeklyMs=spMilestones.filter(m=>m.horizon==='Weekly');
+  // Apply toggle filter FIRST — pill counts are derived from this set
+  let toggleFiltered;
+  if(spWeeklyToggle==='upcoming'){
+    toggleFiltered=allWeeklyMs.filter(m=>{
+      if(m.status==='Done')return false;
+      if(!m.dueDate)return false;
+      const d=new Date(m.dueDate+'T00:00:00');
+      return !isNaN(d)&&d>=today&&d<=in10;
+    }).sort((a,b)=>a.dueDate.localeCompare(b.dueDate));
+  } else if(spWeeklyToggle==='overdue'){
+    toggleFiltered=allWeeklyMs.filter(m=>{
+      if(m.status==='Done')return false;
+      if(!m.dueDate)return false;
+      const d=new Date(m.dueDate+'T00:00:00');
+      return !isNaN(d)&&d<today;
+    }).sort((a,b)=>a.dueDate.localeCompare(b.dueDate));
+  } else { // 'all' — every weekly milestone, sorted by dueDate (undated at end)
+    toggleFiltered=[...allWeeklyMs].sort((a,b)=>{
+      if(!a.dueDate&&!b.dueDate)return 0;
+      if(!a.dueDate)return 1;
+      if(!b.dueDate)return -1;
+      return a.dueDate.localeCompare(b.dueDate);
+    });
+  }
+  // Build anchor pills from toggle-filtered set so counts always reflect current toggle
   const seenLc=new Set();
-  const anchorNames=allWeeklies
+  const anchorNames=toggleFiltered
     .map(m=>(m.owner||'').trim()).filter(Boolean)
     .filter(n=>{const lc=n.toLowerCase();if(seenLc.has(lc))return false;seenLc.add(lc);return true;})
     .sort((a,b)=>a.localeCompare(b,undefined,{sensitivity:'base'}));
-  // Normalised current filter for comparison
   const normFilter=spWfAnchorFilter==='all'?'all':spWfAnchorFilter.toLowerCase();
   const anchorRow=document.getElementById('spWfAnchorRow');
   if(anchorRow){
     if(anchorNames.length){
-      let pills=`<button class="sp-wf-anchor-pill${spWfAnchorFilter==='all'?' on':''}" onclick="spSetWfAnchorFilter('all')">All <span class="sp-wf-pill-ct">${allWeeklies.length}</span></button>`;
+      let pills=`<button class="sp-wf-anchor-pill${spWfAnchorFilter==='all'?' on':''}" onclick="spSetWfAnchorFilter('all')">All <span class="sp-wf-pill-ct">${toggleFiltered.length}</span></button>`;
       anchorNames.forEach(n=>{
-        const ct=allWeeklies.filter(m=>(m.owner||'').trim().toLowerCase()===n.toLowerCase()).length;
+        const ct=toggleFiltered.filter(m=>(m.owner||'').trim().toLowerCase()===n.toLowerCase()).length;
         const isOn=normFilter!=='all'&&normFilter===n.toLowerCase();
-        // single-quoted attribute so JSON.stringify's double quotes don't break the HTML
         pills+=`<button class="sp-wf-anchor-pill${isOn?' on':''}" onclick='spSetWfAnchorFilter(${JSON.stringify(n)})'>${n} <span class="sp-wf-pill-ct">${ct}</span></button>`;
       });
       anchorRow.innerHTML=pills;
@@ -5327,52 +5351,48 @@ function renderSpWeeklyPage(){
       anchorRow.innerHTML='';
     }
   }
-  // Date filter
-  let filtered;
-  if(spWeeklyToggle==='upcoming'){
-    filtered=allWeeklies.filter(m=>{
-      if(!m.dueDate)return false;
-      const d=new Date(m.dueDate+'T00:00:00');
-      return !isNaN(d)&&d>=today&&d<=in10;
-    }).sort((a,b)=>a.dueDate.localeCompare(b.dueDate));
-  } else {
-    filtered=allWeeklies.filter(m=>{
-      if(!m.dueDate)return false;
-      const d=new Date(m.dueDate+'T00:00:00');
-      return !isNaN(d)&&d<today;
-    }).sort((a,b)=>a.dueDate.localeCompare(b.dueDate));
-  }
   // Anchor filter — tolerant matching (trim + case-insensitive)
-  if(normFilter!=='all') filtered=filtered.filter(m=>(m.owner||'').trim().toLowerCase()===normFilter);
+  const filtered=normFilter==='all'?toggleFiltered:toggleFiltered.filter(m=>(m.owner||'').trim().toLowerCase()===normFilter);
   // Filter status line
   const statusEl=document.getElementById('spWfFilterStatus');
-  if(statusEl) statusEl.textContent=normFilter!=='all'?`Showing ${filtered.length} of ${allWeeklies.length} weekly milestones for ${spWfAnchorFilter}`:'';
+  if(statusEl) statusEl.textContent=normFilter!=='all'?`Showing ${filtered.length} of ${toggleFiltered.length} weekly milestones for ${spWfAnchorFilter}`:'';
+  // Count label
   const countEl=document.getElementById('spWfCount');
   if(countEl)countEl.textContent=spWeeklyToggle==='upcoming'
     ?`${filtered.length} milestone${filtered.length!==1?'s':''} due in the next 10 days`
-    :`${filtered.length} milestone${filtered.length!==1?'s':''} overdue`;
+    :spWeeklyToggle==='overdue'
+    ?`${filtered.length} milestone${filtered.length!==1?'s':''} overdue`
+    :`${filtered.length} milestone${filtered.length!==1?'s':''} total`;
   if(!filtered.length){
     let msg;
     if(spWfAnchorFilter!=='all'){
       msg=spWeeklyToggle==='upcoming'
         ?`No milestones anchored to ${spWfAnchorFilter} due in the next 10 days`
-        :`No milestones anchored to ${spWfAnchorFilter} are overdue`;
+        :spWeeklyToggle==='overdue'
+        ?`No milestones anchored to ${spWfAnchorFilter} are overdue`
+        :`No weekly milestones anchored to ${spWfAnchorFilter}`;
     } else {
-      msg=spWeeklyToggle==='upcoming'?"Nothing due in the next 10 days — you're clear":"Nothing overdue — you're on track ✓";
+      msg=spWeeklyToggle==='upcoming'?"Nothing due in the next 10 days — you're clear"
+        :spWeeklyToggle==='overdue'?"Nothing overdue — you're on track ✓"
+        :"No weekly milestones yet";
     }
     el.innerHTML=`<div class="sp-wf-empty">${msg}</div>`;
     return;
   }
   let html='<div class="sp-wf-cards">';
   filtered.forEach(m=>{
-    const d=new Date(m.dueDate+'T00:00:00');
-    const isToday=d.getTime()===today.getTime();
-    const isOverdue=d<today;
-    const daysAgo=Math.round((today.getTime()-d.getTime())/(1000*60*60*24));
-    let dateText,dateCls;
-    if(isOverdue){dateText=`${daysAgo} day${daysAgo!==1?'s':''} overdue`;dateCls='overdue';}
-    else if(isToday){dateText='Today';dateCls='today';}
-    else{dateText=`${DAYS[d.getDay()]} ${MONTHS[d.getMonth()]} ${d.getDate()}`;dateCls='';}
+    let dateText,dateCls,isOverdue=false;
+    if(m.dueDate){
+      const d=new Date(m.dueDate+'T00:00:00');
+      const isToday=d.getTime()===today.getTime();
+      isOverdue=d<today;
+      const daysAgo=Math.round((today.getTime()-d.getTime())/(1000*60*60*24));
+      if(isOverdue){dateText=`${daysAgo} day${daysAgo!==1?'s':''} overdue`;dateCls='overdue';}
+      else if(isToday){dateText='Today';dateCls='today';}
+      else{dateText=`${DAYS[d.getDay()]} ${MONTHS[d.getMonth()]} ${d.getDate()}`;dateCls='';}
+    } else {
+      dateText='No due date';dateCls='';
+    }
     const pct=Number(m.progressPct)||0;
     const target=Number(m.metricTarget)||0;
     const current=Number(m.metricCurrent)||0;
@@ -5381,6 +5401,7 @@ function renderSpWeeklyPage(){
     const linked=currentTasks.filter(t=>t.milestoneId===m.milestoneId);
     const doneCt=linked.filter(t=>t.done).length;
     const linkedText=linked.length?`${doneCt} of ${linked.length} task${linked.length!==1?'s':''} done`:'No tasks linked';
+    const isToday=dateCls==='today';
     html+=`<div class="sp-wf-card${isOverdue?' overdue':''}">`;
     html+=`<div class="sp-wf-card-top"><div class="sp-wf-card-date${dateCls?' '+dateCls:''}">${dateText}${isToday?' <span class="sp-wf-today-tag">TODAY</span>':''}</div><span class="sp-wf-card-pct">${pct}%</span></div>`;
     html+=`<div class="sp-wf-card-text">${m.text}</div>`;
