@@ -1181,12 +1181,51 @@ body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);m
 .mob-overlay{display:none;position:fixed;top:50px;left:0;right:0;bottom:0;background:rgba(0,0,0,0.45);z-index:90;}
 .mob-overlay.mob-show{display:block;}
 
+/* ── This Week: two-column layout (main + calendar panel) ── */
+.tw-layout{display:flex;height:100%;overflow:hidden;}
+.tw-main{flex:1;min-width:0;overflow-y:auto;padding:22px 26px;}
+.cal-panel{width:290px;flex-shrink:0;border-left:1px solid var(--border);background:var(--white);overflow-y:auto;transition:width 0.22s ease,opacity 0.22s ease;}
+.cal-panel.collapsed{width:0;overflow:hidden;border-left:none;opacity:0;pointer-events:none;}
+.cal-panel-inner{padding:14px 12px;}
+.cal-panel-title{font-family:'DM Serif Display',serif;font-size:15px;color:var(--ink);margin-bottom:12px;}
+.cal-toggle-btn{padding:5px 12px;border:1.5px solid var(--border);background:none;border-radius:8px;font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif;color:var(--ink-faint);transition:all 0.15s;white-space:nowrap;}
+.cal-toggle-btn:hover,.cal-toggle-btn.on{border-color:var(--accent);color:var(--accent);background:var(--accent-light);}
+.cal-day-nav{display:flex;align-items:center;gap:6px;margin-bottom:10px;}
+.cal-day-btn{width:26px;height:26px;border:1.5px solid var(--border);background:none;border-radius:6px;cursor:pointer;font-size:15px;display:inline-flex;align-items:center;justify-content:center;color:var(--ink-soft);transition:all 0.13s;line-height:1;padding:0;}
+.cal-day-btn:hover{border-color:var(--accent);color:var(--accent);}
+.cal-day-label{flex:1;font-family:'DM Mono',monospace;font-size:11px;color:var(--ink);text-align:center;font-weight:600;}
+.cal-section-lbl{font-size:9.5px;color:var(--ink-faint);font-family:'DM Mono',monospace;letter-spacing:0.7px;text-transform:uppercase;margin-bottom:5px;}
+.cal-unscheduled{min-height:30px;border:1.5px dashed var(--border);border-radius:8px;padding:5px 7px;background:var(--paper-warm);transition:all 0.13s;}
+.cal-unscheduled.drag-over{border-color:var(--accent);background:var(--accent-light);}
+.cal-unsched-empty{font-size:10px;color:var(--ink-faint);text-align:center;padding:3px 0;font-style:italic;}
+.cal-chip{display:inline-flex;align-items:center;gap:4px;background:var(--white);border:1px solid var(--border);border-radius:7px;padding:3px 7px;font-size:10.5px;cursor:grab;margin:2px;max-width:100%;transition:border-color 0.13s;}
+.cal-chip:hover{border-color:var(--accent);}
+.cal-chip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
+.cal-timeline{display:flex;flex-direction:column;gap:1px;margin-top:4px;}
+.cal-hour-row{display:flex;gap:5px;align-items:flex-start;min-height:32px;padding:2px 3px;border-radius:5px;transition:background 0.12s;}
+.cal-hour-row.drag-over{background:var(--accent-light);outline:1.5px dashed var(--accent);}
+.cal-hour-now{background:rgba(200,152,42,0.08);border-left:2px solid var(--gold);padding-left:1px;}
+.cal-hour-lbl{font-family:'DM Mono',monospace;font-size:9.5px;color:var(--ink-faint);min-width:26px;flex-shrink:0;padding-top:5px;}
+.cal-hour-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;}
+.cal-hour-hint{font-size:9.5px;color:transparent;font-style:italic;padding:5px 0;transition:color 0.12s;}
+.cal-hour-row.drag-over .cal-hour-hint{color:var(--accent);}
+.cal-placed-card{background:var(--paper);border:1.5px solid var(--border);border-radius:6px;padding:3px 6px;font-size:10.5px;display:flex;align-items:center;gap:4px;min-width:0;cursor:grab;transition:border-color 0.13s;}
+.cal-placed-card:hover{border-color:var(--accent);}
+.cal-placed-text{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
+.cal-placed-x{flex-shrink:0;color:var(--ink-faint);cursor:pointer;font-size:13px;padding:0 2px;line-height:1;transition:color 0.12s;}
+.cal-placed-x:hover{color:var(--fire);}
+/* Clock time chip on task cards */
+.ttimechip{display:inline-flex;align-items:center;font-size:10px;color:var(--purple);background:var(--purple-light);padding:1px 6px;border-radius:10px;flex-shrink:0;font-family:'DM Mono',monospace;}
+
 @media (max-width: 768px) {
   /* ── Topbar ── */
   .mob-hamburger{display:flex;}
   .topbar{padding:0 12px 0 4px;}
   .topbar-right{display:none;}
   .week-badge{display:none;}
+  /* ── Calendar panel: hidden on mobile ── */
+  .cal-panel{display:none !important;}
+  .cal-toggle-btn{display:none;}
   .mode-btn{padding:5px 9px;font-size:11px;}
 
   /* ── Shell: collapse to single content column ── */
@@ -1302,45 +1341,58 @@ body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);m
   <main style="overflow-y:auto;overflow-x:hidden;background:var(--paper);">
 
     <!-- THIS WEEK -->
-    <div class="page active" id="page-thisweek" style="padding:22px 26px;">
-      <div class="review-banner" id="reviewBanner" style="display:none;">
-        <span>📋 You haven't done today's capture review yet — unprocessed items and aging ideas are piling up.</span>
-        <div class="review-banner-actions">
-          <button class="bs" onclick="sp('capture',document.querySelector('#wNav .ni'))">Go to Capture</button>
-          <button class="bs" onclick="dismissReviewBanner()">Dismiss</button>
-        </div>
-      </div>
-      <div class="cap-quick-row">
-        <button class="cap-quick-add" onclick="quickCapture()" title="Quick capture">+</button>
-        <div style="font-size:11px;color:var(--ink-faint);">Capture a new task or idea</div>
-      </div>
-      <div class="tpt-strip">
-        <div class="tpt-header">
-          <div>
-            <div class="tpt-title">Top Priorities Today</div>
-            <div class="tpt-subtitle">6 things that must happen today — everything else is context</div>
+    <div class="page active" id="page-thisweek" style="padding:0;overflow:hidden;">
+      <div class="tw-layout">
+        <div class="tw-main">
+          <div class="review-banner" id="reviewBanner" style="display:none;">
+            <span>📋 You haven't done today's capture review yet — unprocessed items and aging ideas are piling up.</span>
+            <div class="review-banner-actions">
+              <button class="bs" onclick="sp('capture',document.querySelector('#wNav .ni'))">Go to Capture</button>
+              <button class="bs" onclick="dismissReviewBanner()">Dismiss</button>
+            </div>
+          </div>
+          <div class="cap-quick-row" style="justify-content:space-between;">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <button class="cap-quick-add" onclick="quickCapture()" title="Quick capture">+</button>
+              <div style="font-size:11px;color:var(--ink-faint);">Capture a new task or idea</div>
+            </div>
+            <button class="cal-toggle-btn on" id="calToggleBtn" onclick="toggleCalPanel()">📅 Today's Plan</button>
+          </div>
+          <div class="tpt-strip">
+            <div class="tpt-header">
+              <div>
+                <div class="tpt-title">Top Priorities Today</div>
+                <div class="tpt-subtitle">6 things that must happen today — everything else is context</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;">
+                <div class="tpt-date" id="tptDate"></div>
+                <button class="bs" onclick="clearAllTopPriorities()" style="font-size:11px;padding:5px 12px;white-space:nowrap;">Clear All</button>
+              </div>
+            </div>
+            <div class="tpt-slots" id="tptSlots"></div>
+            <div class="tpt-full-msg" id="tptFullMsg">Top Priorities full — complete or remove one first</div>
           </div>
           <div style="display:flex;align-items:center;gap:10px;">
-            <div class="tpt-date" id="tptDate"></div>
-            <button class="bs" onclick="clearAllTopPriorities()" style="font-size:11px;padding:5px 12px;white-space:nowrap;">Clear All</button>
+            <div class="sl" style="flex:1;" id="syncLabel">⇌ Not yet synced</div>
+            <button class="bs" id="syncBtn" onclick="syncTasksToSheet()" style="font-size:11px;padding:5px 12px;white-space:nowrap;">⟳ Sync to Sheets</button>
+          </div>
+          <div style="font-size:10px;color:var(--ink-faint);margin:-6px 0 10px;font-family:'DM Mono',monospace;" id="syncStatus"></div>
+          <div class="matrix">
+            <div class="quadrant qa-donow"><div class="qh"><div class="qn">🔴 Do Now</div><div class="qc">0</div></div><div class="qdesc">Yours — due today or overdue</div><div class="quad-list"></div></div>
+            <div class="quadrant qa-dosoon"><div class="qh"><div class="qn">🟡 Do Soon</div><div class="qc">0</div></div><div class="qdesc">Yours — due within 3 days</div><div class="quad-list"></div></div>
+            <div class="quadrant qa-schedule"><div class="qh"><div class="qn">🟢 Schedule</div><div class="qc">0</div></div><div class="qdesc">Yours — due in 4+ days or unscheduled</div><div class="quad-list"></div></div>
+            <div class="quadrant qa-delegated"><div class="qh"><div class="qn">🔵 Delegated</div><div class="qc">0</div></div><div class="qdesc">Owned by your team</div><div class="quad-list"></div></div>
+            <div class="quadrant qa-awaited full"><div class="qh"><div class="qn">⏳ Awaited</div><div class="qc">0</div></div><div class="qdesc">Waiting on Rajesh</div><div class="quad-list"></div></div>
+            <div class="quadrant qa-done full"><div class="qh"><div class="qn">✅ Done</div><div style="display:flex;align-items:center;gap:8px;"><div class="qc">0</div><button class="bs" onclick="clearDoneTasks()" style="font-size:10px;padding:4px 10px;">Clear Done</button></div></div><div class="qdesc">Completed tasks — cleared manually</div><div class="quad-list"></div></div>
+          </div>
+        </div><!-- /.tw-main -->
+        <div class="cal-panel" id="calPanel">
+          <div class="cal-panel-inner">
+            <div class="cal-panel-title">Today's Plan</div>
+            <div id="calPanelBody"></div>
           </div>
         </div>
-        <div class="tpt-slots" id="tptSlots"></div>
-        <div class="tpt-full-msg" id="tptFullMsg">Top Priorities full — complete or remove one first</div>
-      </div>
-      <div style="display:flex;align-items:center;gap:10px;">
-        <div class="sl" style="flex:1;" id="syncLabel">⇌ Not yet synced</div>
-        <button class="bs" id="syncBtn" onclick="syncTasksToSheet()" style="font-size:11px;padding:5px 12px;white-space:nowrap;">⟳ Sync to Sheets</button>
-      </div>
-      <div style="font-size:10px;color:var(--ink-faint);margin:-6px 0 10px;font-family:'DM Mono',monospace;" id="syncStatus"></div>
-      <div class="matrix">
-        <div class="quadrant qa-donow"><div class="qh"><div class="qn">🔴 Do Now</div><div class="qc">0</div></div><div class="qdesc">Yours — due today or overdue</div><div class="quad-list"></div></div>
-        <div class="quadrant qa-dosoon"><div class="qh"><div class="qn">🟡 Do Soon</div><div class="qc">0</div></div><div class="qdesc">Yours — due within 3 days</div><div class="quad-list"></div></div>
-        <div class="quadrant qa-schedule"><div class="qh"><div class="qn">🟢 Schedule</div><div class="qc">0</div></div><div class="qdesc">Yours — due in 4+ days or unscheduled</div><div class="quad-list"></div></div>
-        <div class="quadrant qa-delegated"><div class="qh"><div class="qn">🔵 Delegated</div><div class="qc">0</div></div><div class="qdesc">Owned by your team</div><div class="quad-list"></div></div>
-        <div class="quadrant qa-awaited full"><div class="qh"><div class="qn">⏳ Awaited</div><div class="qc">0</div></div><div class="qdesc">Waiting on Rajesh</div><div class="quad-list"></div></div>
-        <div class="quadrant qa-done full"><div class="qh"><div class="qn">✅ Done</div><div style="display:flex;align-items:center;gap:8px;"><div class="qc">0</div><button class="bs" onclick="clearDoneTasks()" style="font-size:10px;padding:4px 10px;">Clear Done</button></div></div><div class="qdesc">Completed tasks — cleared manually</div><div class="quad-list"></div></div>
-      </div>
+      </div><!-- /.tw-layout -->
     </div>
 
     <!-- CAPTURE -->
@@ -2964,8 +3016,27 @@ function postToSheet(payload){
     });
 }
 
+// Split "YYYY-MM-DD" or "YYYY-MM-DD HH:MM" into {date, time}
+function parseDueDateStr(s){
+  if(!s)return{date:'',time:null};
+  s=s.toString().trim();
+  const m=s.match(/^(\d{4}-\d{2}-\d{2})(?:\s+(\d{2}:\d{2}))?$/);
+  if(m)return{date:m[1],time:m[2]||null};
+  return{date:s,time:null};
+}
+// "14:00" → "2pm", "09:30" → "9:30am"
+function formatTimeShort(timeStr){
+  if(!timeStr)return'';
+  const[h,m]=timeStr.split(':').map(Number);
+  const period=h>=12?'pm':'am';
+  let h12=h%12;if(h12===0)h12=12;
+  return m===0?`${h12}${period}`:`${h12}:${String(m).padStart(2,'0')}${period}`;
+}
+
 function formatDueDate(dateStr){
-  const d=new Date(dateStr+'T00:00:00');
+  const{date}=parseDueDateStr(dateStr);
+  if(!date)return dateStr||'';
+  const d=new Date(date+'T00:00:00');
   if(isNaN(d.getTime()))return dateStr;
   return d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
 }
@@ -2974,7 +3045,8 @@ function normalizeDueDate(raw){
   if(!raw)return '';
   raw=raw.toString().trim();
   if(!raw)return '';
-  if(/^\d{4}-\d{2}-\d{2}$/.test(raw))return raw;
+  // Pass through YYYY-MM-DD and YYYY-MM-DD HH:MM as-is
+  if(/^\d{4}-\d{2}-\d{2}(?:\s+\d{2}:\d{2})?$/.test(raw))return raw;
   const d=new Date(raw);
   if(isNaN(d.getTime()))return '';
   const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),day=String(d.getDate()).padStart(2,'0');
@@ -2983,7 +3055,9 @@ function normalizeDueDate(raw){
 
 function daysUntil(dateStr){
   if(!dateStr)return null;
-  const due=new Date(dateStr+'T00:00:00');
+  const{date}=parseDueDateStr(dateStr);
+  if(!date)return null;
+  const due=new Date(date+'T00:00:00');
   if(isNaN(due.getTime()))return null;
   const today=new Date();
   today.setHours(0,0,0,0);
@@ -3004,7 +3078,8 @@ function editDueDate(due,idx){
   const input=document.createElement('input');
   input.type='date';
   input.className='tdue-input';
-  input.value=currentTasks[idx].dueDate||'';
+  const{date:curDate,time:curTime}=parseDueDateStr(currentTasks[idx].dueDate||'');
+  input.value=curDate||'';
   input.onclick=ev=>ev.stopPropagation();
   due.replaceWith(input);
   input.focus();
@@ -3013,10 +3088,13 @@ function editDueDate(due,idx){
   const finish=()=>{
     if(finished)return;
     finished=true;
-    currentTasks[idx].dueDate=input.value||'';
+    const newDate=input.value||'';
+    // Preserve existing time component when only date is changed
+    currentTasks[idx].dueDate=newDate?(curTime?newDate+' '+curTime:newDate):'';
     refreshDueEl(due,currentTasks[idx].dueDate);
     input.replaceWith(due);
     saveState();
+    renderCalPanel();
   };
   input.addEventListener('change',finish);
   input.addEventListener('blur',finish);
@@ -3041,9 +3119,11 @@ function buildTaskEl(t,idx){
   if(!t.done){
     ti.draggable=true;
     ti.ondragstart=function(ev){
+      window._calDragIdx=idx;
       ev.dataTransfer.setData('text/plain',t.task);
-      ev.dataTransfer.effectAllowed='copy';
+      ev.dataTransfer.effectAllowed='move';
     };
+    ti.ondragend=function(){window._calDragIdx=null;};
   }
   const tc=document.createElement('div');tc.className='tc'+(t.done?' done':'');
   tc.onclick=function(){toggleTask(idx);};
@@ -3054,6 +3134,13 @@ function buildTaskEl(t,idx){
   const town=document.createElement('div');town.className='town';town.textContent=(t.owner||'Akshit').trim()||'Akshit';
   badges.appendChild(town);
   appendDueEl(badges,idx);
+  // Clock chip: show time component if present
+  const{time:taskTime}=parseDueDateStr(t.dueDate||'');
+  if(taskTime){
+    const ttime=document.createElement('div');ttime.className='ttimechip';
+    ttime.textContent='🕐 '+formatTimeShort(taskTime);
+    badges.appendChild(ttime);
+  }
   ti.appendChild(badges);
   const starred=topPriorities.slots.includes(t.task);
   const star=document.createElement('span');
@@ -3134,6 +3221,172 @@ function clearDoneTasks(){
   saveState();
 }
 
+/* ══════════════ CALENDAR PANEL ══════════════ */
+const CAL_PANEL_OPEN_KEY='cal_panel_open';
+let calPanelOpen=true;
+let calSelectedDate='';
+window._calDragIdx=null;
+
+function initCalPanel(){
+  const stored=localStorage.getItem(CAL_PANEL_OPEN_KEY);
+  calPanelOpen=stored===null?true:stored==='1';
+  calSelectedDate=addDays(0);
+  applyCalPanelState();
+  renderCalPanel();
+}
+
+function applyCalPanelState(){
+  const panel=document.getElementById('calPanel');
+  const btn=document.getElementById('calToggleBtn');
+  if(panel)panel.classList.toggle('collapsed',!calPanelOpen);
+  if(btn)btn.classList.toggle('on',calPanelOpen);
+}
+
+function toggleCalPanel(){
+  calPanelOpen=!calPanelOpen;
+  localStorage.setItem(CAL_PANEL_OPEN_KEY,calPanelOpen?'1':'0');
+  applyCalPanelState();
+}
+
+function calGoDay(delta){
+  const d=new Date(calSelectedDate+'T00:00:00');
+  d.setDate(d.getDate()+delta);
+  const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),dy=String(d.getDate()).padStart(2,'0');
+  calSelectedDate=`${y}-${m}-${dy}`;
+  renderCalPanel();
+}
+
+function formatCalDayLabel(dateStr){
+  const today=addDays(0);
+  const d=new Date(dateStr+'T00:00:00');
+  const DAYS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const label=`${DAYS[d.getDay()]} ${MONTHS[d.getMonth()]} ${d.getDate()}`;
+  return dateStr===today?`Today · ${label}`:label;
+}
+
+function formatHourLabel(h){
+  if(h===0)return'12am';
+  if(h<12)return h+'am';
+  if(h===12)return'12pm';
+  return(h-12)+'pm';
+}
+
+function calDropToHour(hourNum){
+  const idx=window._calDragIdx;
+  if(idx===null||idx===undefined||!currentTasks[idx])return;
+  const hourStr=String(hourNum).padStart(2,'0');
+  currentTasks[idx].dueDate=`${calSelectedDate} ${hourStr}:00`;
+  window._calDragIdx=null;
+  saveState();
+  postToSheet({tab:'tasks',action:'sync',tasks:currentTasks}).catch(()=>{});
+  renderTasksToMatrix(currentTasks);
+}
+
+function calDropToUnscheduled(){
+  const idx=window._calDragIdx;
+  if(idx===null||idx===undefined||!currentTasks[idx])return;
+  currentTasks[idx].dueDate=calSelectedDate;
+  window._calDragIdx=null;
+  saveState();
+  postToSheet({tab:'tasks',action:'sync',tasks:currentTasks}).catch(()=>{});
+  renderTasksToMatrix(currentTasks);
+}
+
+function calRemoveTime(taskIdx){
+  if(!currentTasks[taskIdx])return;
+  const{date}=parseDueDateStr(currentTasks[taskIdx].dueDate||'');
+  currentTasks[taskIdx].dueDate=date||'';
+  saveState();
+  postToSheet({tab:'tasks',action:'sync',tasks:currentTasks}).catch(()=>{});
+  renderTasksToMatrix(currentTasks);
+}
+
+function renderCalPanel(){
+  const body=document.getElementById('calPanelBody');
+  if(!body||!calSelectedDate)return;
+  if(!calPanelOpen){body.innerHTML='';return;}
+
+  const now=new Date();
+  const currentHour=now.getHours();
+  const isToday=(calSelectedDate===addDays(0));
+
+  // Tasks for the selected day (not done, date portion matches)
+  const dayTasks=currentTasks
+    .map((t,idx)=>({t,idx}))
+    .filter(({t})=>{
+      if(t.done)return false;
+      return parseDueDateStr(t.dueDate||'').date===calSelectedDate;
+    });
+
+  const scheduled=dayTasks.filter(({t})=>parseDueDateStr(t.dueDate).time!==null);
+  const unscheduled=dayTasks.filter(({t})=>parseDueDateStr(t.dueDate).time===null);
+
+  let html='';
+
+  // Day navigator
+  html+=`<div class="cal-day-nav">`;
+  html+=`<button class="cal-day-btn" onclick="calGoDay(-1)">‹</button>`;
+  html+=`<div class="cal-day-label">${formatCalDayLabel(calSelectedDate)}</div>`;
+  html+=`<button class="cal-day-btn" onclick="calGoDay(1)">›</button>`;
+  html+=`</div>`;
+
+  // Unscheduled tray
+  html+=`<div class="cal-section-lbl">Unscheduled today</div>`;
+  html+=`<div class="cal-unscheduled"`;
+  html+=` ondragover="event.preventDefault();this.classList.add('drag-over')"`;
+  html+=` ondragleave="if(!this.contains(event.relatedTarget))this.classList.remove('drag-over')"`;
+  html+=` ondrop="this.classList.remove('drag-over');calDropToUnscheduled()">`;
+  if(!unscheduled.length){
+    html+=`<div class="cal-unsched-empty">No unscheduled tasks</div>`;
+  } else {
+    unscheduled.forEach(({t,idx})=>{
+      const label=t.task.length>30?t.task.slice(0,30)+'…':t.task;
+      html+=`<div class="cal-chip" draggable="true" title="${t.task.replace(/"/g,'&quot;')}"`;
+      html+=` ondragstart="window._calDragIdx=${idx};event.dataTransfer.effectAllowed='move'"`;
+      html+=` ondragend="window._calDragIdx=null">`;
+      html+=`<span>${label}</span></div>`;
+    });
+  }
+  html+=`</div>`;
+
+  // Hourly timeline: 6am – 11pm
+  html+=`<div class="cal-section-lbl" style="margin-top:10px;">Schedule</div>`;
+  html+=`<div class="cal-timeline">`;
+  for(let h=6;h<=23;h++){
+    const isNowHour=isToday&&h===currentHour;
+    const rowCls='cal-hour-row'+(isNowHour?' cal-hour-now':'');
+    const lbl=formatHourLabel(h);
+    const placed=scheduled.filter(({t})=>{
+      const{time}=parseDueDateStr(t.dueDate);
+      return time&&parseInt(time.split(':')[0],10)===h;
+    });
+    html+=`<div class="${rowCls}"`;
+    html+=` ondragover="event.preventDefault();this.classList.add('drag-over')"`;
+    html+=` ondragleave="if(!this.contains(event.relatedTarget))this.classList.remove('drag-over')"`;
+    html+=` ondrop="this.classList.remove('drag-over');calDropToHour(${h})">`;
+    html+=`<div class="cal-hour-lbl">${lbl}</div>`;
+    html+=`<div class="cal-hour-body">`;
+    if(placed.length){
+      placed.forEach(({t,idx})=>{
+        const label=t.task.length>26?t.task.slice(0,26)+'…':t.task;
+        html+=`<div class="cal-placed-card" draggable="true" title="${t.task.replace(/"/g,'&quot;')}"`;
+        html+=` ondragstart="window._calDragIdx=${idx};event.dataTransfer.effectAllowed='move'"`;
+        html+=` ondragend="window._calDragIdx=null">`;
+        html+=`<span class="cal-placed-text">${label}</span>`;
+        html+=`<span class="cal-placed-x" onclick="calRemoveTime(${idx})" title="Remove time">×</span>`;
+        html+=`</div>`;
+      });
+    } else {
+      html+=`<div class="cal-hour-hint">Drop a task here</div>`;
+    }
+    html+=`</div></div>`;
+  }
+  html+=`</div>`;
+
+  body.innerHTML=html;
+}
+
 function renderTasksToMatrix(tasks){
   currentTasks=tasks;
   QUADRANT_DEFS.forEach(qd=>{
@@ -3159,6 +3412,7 @@ function renderTasksToMatrix(tasks){
     if(qc)qc.textContent=items.length;
   });
   renderTopPriorities();
+  renderCalPanel();
 }
 
 function addDays(n){
@@ -3201,7 +3455,9 @@ const dismissedUnprocessed=new Set();
 
 function daysSince(dateStr){
   if(!dateStr)return 0;
-  const d=new Date(dateStr+'T00:00:00');
+  const{date}=parseDueDateStr(dateStr);
+  if(!date)return 0;
+  const d=new Date(date+'T00:00:00');
   const now=new Date();now.setHours(0,0,0,0);
   return Math.round((now-d)/(1000*60*60*24));
 }
@@ -4265,6 +4521,7 @@ renderSyncLabel();
 topPriorities=loadTopPriorities();
 initStepIntentions();
 loadState();
+initCalPanel();
 initTasks().then(()=>{
   renderCapturePage();
   renderReviewBanner();
